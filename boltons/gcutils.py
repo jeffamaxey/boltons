@@ -107,16 +107,12 @@ def get_all(type_obj, include_subtypes=True):
         type_is_tracked = gc.is_tracked(type_obj)
     except AttributeError:
         type_is_tracked = False  # Python 2.6 and below don't get the speedup
-    if type_is_tracked:
-        to_check = gc.get_referrers(type_obj)
-    else:
-        to_check = gc.get_objects()
-
-    if include_subtypes:
-        ret = [x for x in to_check if isinstance(x, type_obj)]
-    else:
-        ret = [x for x in to_check if type(x) is type_obj]
-    return ret
+    to_check = gc.get_referrers(type_obj) if type_is_tracked else gc.get_objects()
+    return (
+        [x for x in to_check if isinstance(x, type_obj)]
+        if include_subtypes
+        else [x for x in to_check if type(x) is type_obj]
+    )
 
 
 _IS_PYPY = '__pypy__' in sys.builtin_module_names

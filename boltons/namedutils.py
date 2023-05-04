@@ -195,10 +195,12 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
         seen.add(name)
 
     # Fill-in the class template
-    fmt_kw = {'typename': typename}
-    fmt_kw['field_names'] = tuple(field_names)
-    fmt_kw['num_fields'] = len(field_names)
-    fmt_kw['arg_list'] = repr(tuple(field_names)).replace("'", "")[1:-1]
+    fmt_kw = {
+        'typename': typename,
+        'field_names': tuple(field_names),
+        'num_fields': len(field_names),
+        'arg_list': repr(tuple(field_names)).replace("'", "")[1:-1],
+    }
     fmt_kw['repr_fmt'] = ', '.join(_repr_tmpl.format(name=name)
                                    for name in field_names)
     fmt_kw['field_defs'] = '\n'.join(_imm_field_tmpl.format(index=index, name=name)
@@ -210,11 +212,13 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
 
     # Execute the template string in a temporary namespace and support
     # tracing utilities by setting a value for frame.f_globals['__name__']
-    namespace = dict(_itemgetter=_itemgetter,
-                     __name__='namedtuple_%s' % typename,
-                     OrderedDict=OrderedDict,
-                     _property=property,
-                     _tuple=tuple)
+    namespace = dict(
+        _itemgetter=_itemgetter,
+        __name__=f'namedtuple_{typename}',
+        OrderedDict=OrderedDict,
+        _property=property,
+        _tuple=tuple,
+    )
     try:
         exec_(class_definition, namespace)
     except SyntaxError as e:
@@ -374,12 +378,14 @@ def namedlist(typename, field_names, verbose=False, rename=False):
 
     # Execute the template string in a temporary namespace and support
     # tracing utilities by setting a value for frame.f_globals['__name__']
-    namespace = dict(_itemgetter=_itemgetter,
-                     _itemsetter=_itemsetter,
-                     __name__='namedlist_%s' % typename,
-                     OrderedDict=OrderedDict,
-                     _property=property,
-                     _list=list)
+    namespace = dict(
+        _itemgetter=_itemgetter,
+        _itemsetter=_itemsetter,
+        __name__=f'namedlist_{typename}',
+        OrderedDict=OrderedDict,
+        _property=property,
+        _list=list,
+    )
     try:
         exec_(class_definition, namespace)
     except SyntaxError as e:

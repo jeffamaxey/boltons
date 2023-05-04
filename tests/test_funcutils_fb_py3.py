@@ -137,7 +137,7 @@ def test_FunctionBuilder_KWONLY_MARKER(signature, should_match):
     matched = bool(FunctionBuilder._KWONLY_MARKER.search(signature))
     message = "{!r}: should_match was {}, but result was {}".format(
         signature, should_match, matched)
-    assert bool(matched) == should_match, message
+    assert matched == should_match, message
 
 
 def test_FunctionBuilder_add_arg_kwonly():

@@ -15,8 +15,8 @@ from boltons.tableutils import Table
 _DATA = json.load(open('meta_stats.json'))
 
 _CUR_PATH = os.path.dirname(os.path.abspath(clastic.__file__))
-_CA_PATH = _CUR_PATH + '/_clastic_assets'
-_CSS_PATH = _CA_PATH + '/common.css'
+_CA_PATH = f'{_CUR_PATH}/_clastic_assets'
+_CSS_PATH = f'{_CA_PATH}/common.css'
 _STYLE = open(_CSS_PATH).read()
 
 try:
@@ -31,8 +31,7 @@ def fetch_json(url):
     import urllib2
     response = urllib2.urlopen(url)
     content = response.read()
-    data = json.loads(content)
-    return data
+    return json.loads(content)
 
 
 class AutoTableRenderer(object):
@@ -54,9 +53,7 @@ class AutoTableRenderer(object):
             func_name = repr(route.endpoint)
         args, _, _, _ = getargspec(route.endpoint)
         argstr = ', '.join(args)
-        title = ('<h2><small><sub>%s</sub></small><br/>%s(%s)</h2>'
-                 % (module_name, func_name, argstr))
-        return title
+        return f'<h2><small><sub>{module_name}</sub></small><br/>{func_name}({argstr})</h2>'
 
     def __call__(self, context, _route):
         content_parts = [self._html_wrapper]
@@ -71,9 +68,7 @@ class AutoTableRenderer(object):
         table._html_table_tag = self._html_table_tag
         content = table.to_html(max_depth=self.max_depth,
                                 orientation=self.orientation)
-        content_parts.append(content)
-        content_parts.append('</body>')
-        content_parts.append(self._html_wrapper_close)
+        content_parts.extend((content, '</body>', self._html_wrapper_close))
         return Response('\n'.join(content_parts), mimetype='text/html')
 
 
@@ -102,9 +97,11 @@ class BasicRender(object):
                 return Response(context, mimetype="text/plain")
 
         # not serialized yet, time to guess what the requester wants
-        if not isinstance(context, Sized):
-            return Response(unicode(context), mimetype="text/plain")
-        return self._serialize_to_resp(context, request, _route)
+        return (
+            self._serialize_to_resp(context, request, _route)
+            if isinstance(context, Sized)
+            else Response(unicode(context), mimetype="text/plain")
+        )
 
     __call__ = render_response
 

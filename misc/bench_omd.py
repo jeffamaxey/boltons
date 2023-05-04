@@ -51,7 +51,7 @@ def bench():
         impl_name = '.'.join([impl.__module__, impl.__name__])
         log = lithoxyl.logger.BaseLogger(impl_name, sinks=[q_sink])
         print()
-        print('+ %s' % impl_name)
+        print(f'+ {impl_name}')
         for _ in range(times):
             with log.info('total'):
                 for _ in range(times):
@@ -62,7 +62,7 @@ def bench():
                     else:
                         _actions = _shared_actions
                     for action in _actions:
-                        action_func = globals()['_do_' + action]
+                        action_func = globals()[f'_do_{action}']
                         with log.info(action):
                             action_func(target_dict)
         for action in _all_actions:
@@ -85,19 +85,19 @@ def _do_setitem(target_dict):
 
 
 def _do_iteritems(target_dict):
-    [_ for _ in target_dict.iteritems()]
+    list(target_dict.iteritems())
 
 
 def _do_iterkeys(target_dict):
-    [_ for _ in target_dict.iterkeys()]
+    list(target_dict.iterkeys())
 
 
 def _do_multi_iteritems(target_dict):
-    [_ for _ in target_dict.iteritems(multi=True)]
+    list(target_dict.iteritems(multi=True))
 
 
 def _do_multi_iterkeys(target_dict):
-    [_ for _ in target_dict.iterkeys(multi=True)]
+    list(target_dict.iterkeys(multi=True))
 
 
 def _do_getitem(target_dict):

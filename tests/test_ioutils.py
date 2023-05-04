@@ -268,7 +268,7 @@ class TestSpooledBytesIO(TestCase, BaseTestMixin, AssertionsMixin):
         """Make sure iter works as expected"""
         self.spooled_flo.write(b"a\nb")
         self.spooled_flo.seek(0)
-        self.assertEqual([x for x in self.spooled_flo], [b"a\n", b"b"])
+        self.assertEqual(list(self.spooled_flo), [b"a\n", b"b"])
 
 
 class TestSpooledStringIO(TestCase, BaseTestMixin, AssertionsMixin):
@@ -349,8 +349,7 @@ class TestSpooledStringIO(TestCase, BaseTestMixin, AssertionsMixin):
 
     def test_seek_codepoints_large_SEEK_END(self):
         """Make sure seek() moves to codepoints relative to file end"""
-        test_str = u"".join(random.choice(string.ascii_letters) for
-                            x in range(34000))
+        test_str = u"".join(random.choice(string.ascii_letters) for _ in range(34000))
         self.spooled_flo.write(test_str)
         ret = self.spooled_flo.seek(0, os.SEEK_END)
         self.assertEqual(ret, len(test_str))
@@ -363,8 +362,7 @@ class TestSpooledStringIO(TestCase, BaseTestMixin, AssertionsMixin):
 
     def test_seek_codepoints_large_SEEK_SET(self):
         """Make sure seek() moves to codepoints relative to file start"""
-        test_str = u"".join(random.choice(string.ascii_letters) for
-                            x in range(34000))
+        test_str = u"".join(random.choice(string.ascii_letters) for _ in range(34000))
         self.spooled_flo.write(test_str)
         ret = self.spooled_flo.seek(33000, os.SEEK_SET)
         self.assertEqual(ret, 33000)
@@ -380,8 +378,7 @@ class TestSpooledStringIO(TestCase, BaseTestMixin, AssertionsMixin):
 
     def test_seek_codepoints_large_SEEK_CUR(self):
         """Make sure seek() moves to codepoints relative to current_position"""
-        test_str = u"".join(random.choice(string.ascii_letters) for
-                            x in range(34000))
+        test_str = u"".join(random.choice(string.ascii_letters) for _ in range(34000))
         self.spooled_flo.write(test_str)
         self.spooled_flo.seek(1)
         ret = self.spooled_flo.seek(33000, os.SEEK_CUR)
@@ -406,7 +403,7 @@ class TestSpooledStringIO(TestCase, BaseTestMixin, AssertionsMixin):
         """Make sure iter works as expected"""
         self.spooled_flo.write(u"a\nb")
         self.spooled_flo.seek(0)
-        self.assertEqual([x for x in self.spooled_flo], [u"a\n", u"b"])
+        self.assertEqual(list(self.spooled_flo), [u"a\n", u"b"])
 
 
 class TestMultiFileReader(TestCase):

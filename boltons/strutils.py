@@ -36,6 +36,7 @@ common capabilities missing from the standard library, several of them
 provided by ``strutils``.
 """
 
+
 from __future__ import print_function
 
 import re
@@ -83,7 +84,7 @@ __all__ = ['camel2under', 'under2camel', 'slugify', 'split_punct_ws',
 
 
 _punct_ws_str = string.punctuation + string.whitespace
-_punct_re = re.compile('[' + _punct_ws_str + ']+')
+_punct_re = re.compile(f'[{_punct_ws_str}]+')
 _camel2under_re = re.compile('((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))')
 
 
@@ -144,7 +145,7 @@ def split_punct_ws(text):
     return [w for w in _punct_re.split(text) if w]
 
 
-def unit_len(sized_iterable, unit_noun='item'):  # TODO: len_units()/unitize()?
+def unit_len(sized_iterable, unit_noun='item'):    # TODO: len_units()/unitize()?
     """Returns a plain-English description of an iterable's
     :func:`len()`, conditionally pluralized with :func:`cardinalize`,
     detailed below.
@@ -158,9 +159,7 @@ def unit_len(sized_iterable, unit_noun='item'):  # TODO: len_units()/unitize()?
     """
     count = len(sized_iterable)
     units = cardinalize(unit_noun, count)
-    if count:
-        return u'%s %s' % (count, units)
-    return u'No %s' % (units,)
+    return f'{count} {units}' if count else f'No {units}'
 
 
 _ORDINAL_MAP = {'1': 'st',
@@ -190,18 +189,11 @@ def ordinalize(number, ext_only=False):
     if numstr and numstr[-1] in string.digits:
         try:
             # first check for teens
-            if numstr[-2] == '1':
-                ext = 'th'
-            else:
-                # all other cases
-                ext = _ORDINAL_MAP.get(numstr[-1], 'th')
+            ext = 'th' if numstr[-2] == '1' else _ORDINAL_MAP.get(numstr[-1], 'th')
         except IndexError:
             # single digit numbers (will reach here based on [-2] above)
             ext = _ORDINAL_MAP.get(numstr[-1], 'th')
-    if ext_only:
-        return ext
-    else:
-        return numstr + ext
+    return ext if ext_only else numstr + ext
 
 
 def cardinalize(unit_noun, count):
@@ -214,9 +206,7 @@ def cardinalize(unit_noun, count):
     >>> print(3, cardinalize('Wish', 3))
     3 Wishes
     """
-    if count == 1:
-        return unit_noun
-    return pluralize(unit_noun)
+    return unit_noun if count == 1 else pluralize(unit_noun)
 
 
 def singularize(word):
@@ -237,15 +227,14 @@ def singularize(word):
     if not word or word in _IRR_S2P:
         return orig_word
 
-    irr_singular = _IRR_P2S.get(word)
-    if irr_singular:
+    if irr_singular := _IRR_P2S.get(word):
         singular = irr_singular
     elif not word.endswith('s'):
         return orig_word
     elif len(word) == 2:
         singular = word[:-1]  # or just return word?
     elif word.endswith('ies') and word[-4:-3] not in 'aeiou':
-        singular = word[:-3] + 'y'
+        singular = f'{word[:-3]}y'
     elif word.endswith('es') and word[-3] == 's':
         singular = word[:-2]
     else:
@@ -267,15 +256,14 @@ def pluralize(word):
     orig_word, word = word, word.strip().lower()
     if not word or word in _IRR_P2S:
         return orig_word
-    irr_plural = _IRR_S2P.get(word)
-    if irr_plural:
+    if irr_plural := _IRR_S2P.get(word):
         plural = irr_plural
     elif word.endswith('y') and word[-2:-1] not in 'aeiou':
-        plural = word[:-1] + 'ies'
+        plural = f'{word[:-1]}ies'
     elif word[-1] == 's' or word.endswith('ch') or word.endswith('sh'):
-        plural = word if word.endswith('es') else word + 'es'
+        plural = word if word.endswith('es') else f'{word}es'
     else:
-        plural = word + 's'
+        plural = f'{word}s'
     return _match_case(orig_word, plural)
 
 
@@ -368,7 +356,7 @@ def a10n(string):
     """
     if len(string) < 3:
         return string
-    return '%s%s%s' % (string[0], len(string[1:-1]), string[-1])
+    return f'{string[0]}{len(string[1:-1])}{string[-1]}'
 
 
 # Based on https://en.wikipedia.org/wiki/ANSI_escape_code#Escape_sequences
@@ -453,12 +441,9 @@ def asciify(text, ignore=False):
             text = text.decode('utf-8')
             return text.encode('ascii')
     except UnicodeEncodeError:
-        mode = 'replace'
-        if ignore:
-            mode = 'ignore'
+        mode = 'ignore' if ignore else 'replace'
         transd = unicodedata.normalize('NFKD', text.translate(DEACCENT_MAP))
-        ret = transd.encode('ascii', mode)
-        return ret
+        return transd.encode('ascii', mode)
 
 
 def is_ascii(text):
@@ -497,10 +482,7 @@ class DeaccenterDict(dict):
         try:
             de = unicodedata.decomposition(unichr(key))
             p1, _, p2 = de.rpartition(' ')
-            if int(p2, 16) == 0x308:
-                ch = self.get(key)
-            else:
-                ch = int(p1, 16)
+            ch = self.get(key) if int(p2, 16) == 0x308 else int(p1, 16)
         except (IndexError, ValueError):
             ch = self.get(key, key)
         self[key] = ch
@@ -616,17 +598,14 @@ class HTMLTextExtractor(HTMLParser):
         self.result.append(d)
 
     def handle_charref(self, number):
-        if number[0] == u'x' or number[0] == u'X':
-            codepoint = int(number[1:], 16)
-        else:
-            codepoint = int(number)
+        codepoint = int(number[1:], 16) if number[0] in [u'x', u'X'] else int(number)
         self.result.append(unichr(codepoint))
 
     def handle_entityref(self, name):
         try:
             codepoint = htmlentitydefs.name2codepoint[name]
         except KeyError:
-            self.result.append(u'&' + name + u';')
+            self.result.append(f'&{name};')
         else:
             self.result.append(unichr(codepoint))
 
@@ -720,8 +699,7 @@ def iter_splitlines(text):
         if end == len_text:
             yield ''
         prev_end = end
-    tail = text[prev_end:]
-    if tail:
+    if tail := text[prev_end:]:
         yield tail
     return
 
@@ -761,9 +739,7 @@ def is_uuid(obj, version=4):
             obj = uuid.UUID(obj)
         except (TypeError, ValueError, AttributeError):
             return False
-    if version and obj.version != int(version):
-        return False
-    return True
+    return not version or obj.version == int(version)
 
 
 def escape_shell_args(args, sep=' ', style=None):
@@ -1027,12 +1003,7 @@ def format_int_list(int_list, delim=',', range_delim='-', delim_space=False):
             output.append(range_substr)
             contig_range.clear()
 
-    if delim_space:
-        output_str = (delim+' ').join(output)
-    else:
-        output_str = delim.join(output)
-
-    return output_str
+    return f'{delim} '.join(output) if delim_space else delim.join(output)
 
 
 def complement_int_list(
@@ -1114,10 +1085,7 @@ def complement_int_list(
     """
     int_list = set(parse_int_list(range_string, delim, range_delim))
     if range_end is None:
-        if int_list:
-            range_end = max(int_list) + 1
-        else:
-            range_end = range_start
+        range_end = max(int_list) + 1 if int_list else range_start
     complement_values = set(
         range(range_end)) - int_list - set(range(range_start))
     return format_int_list(complement_values, delim, range_delim)
@@ -1145,15 +1113,11 @@ def int_ranges_from_int_list(range_string, delim=',', range_delim='-'):
     ()
     """
     int_tuples = []
-    # Normalize the range string to our internal format for processing.
-    range_string = format_int_list(
-        parse_int_list(range_string, delim, range_delim))
-    if range_string:
+    if range_string := format_int_list(
+        parse_int_list(range_string, delim, range_delim)
+    ):
         for bounds in range_string.split(','):
-            if '-' in bounds:
-                start, end = bounds.split('-')
-            else:
-                start, end = bounds, bounds
+            start, end = bounds.split('-') if '-' in bounds else (bounds, bounds)
             int_tuples.append((int(start), int(end)))
     return tuple(int_tuples)
 
@@ -1220,8 +1184,7 @@ class MultiReplace(object):
         options = {
             'regex': False,
             'flags': 0,
-        }
-        options.update(kwargs)
+        } | kwargs
         self.group_map = {}
         regex_values = []
 
@@ -1232,10 +1195,7 @@ class MultiReplace(object):
             group_name = 'group{0}'.format(idx)
             if isinstance(vals[0], basestring):
                 # If we're not treating input strings like a regex, escape it
-                if not options['regex']:
-                    exp = re.escape(vals[0])
-                else:
-                    exp = vals[0]
+                exp = vals[0] if options['regex'] else re.escape(vals[0])
             else:
                 exp = vals[0].pattern
 
@@ -1290,14 +1250,11 @@ def unwrap_text(text, ending='\n\n'):
     all_grafs = []
     cur_graf = []
     for line in text.splitlines():
-        line = line.strip()
-        if line:
+        if line := line.strip():
             cur_graf.append(line)
         else:
             all_grafs.append(' '.join(cur_graf))
             cur_graf = []
     if cur_graf:
         all_grafs.append(' '.join(cur_graf))
-    if ending is None:
-        return all_grafs
-    return ending.join(all_grafs)
+    return all_grafs if ending is None else ending.join(all_grafs)

@@ -137,8 +137,7 @@ def trace_print_hook(event, label, obj, attr_name,
         fargs += (', '.join([brief_repr(a) for a in args]),)
         if kwargs:
             tmpl = '%s %s - %s - %s.%s(%s, %s)'
-            fargs += (', '.join(['%s=%s' % (k, brief_repr(v))
-                                 for k, v in kwargs.items()]),)
+            fargs += (', '.join([f'{k}={brief_repr(v)}' for k, v in kwargs.items()]), )
         if result is not _UNSET:
             tmpl += ' -> %s'
             fargs += (brief_repr(result),)
@@ -277,9 +276,9 @@ def wrap_trace(obj, hook=trace_print_hook,
 
     cls_name = obj.__class__.__name__
     if cls_name == cls_name.lower():
-        type_name = 'traced_' + cls_name
+        type_name = f'traced_{cls_name}'
     else:
-        type_name = 'Traced' + cls_name
+        type_name = f'Traced{cls_name}'
 
     if hasattr(obj, '__mro__'):
         bases = (obj.__class__,)

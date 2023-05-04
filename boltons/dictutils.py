@@ -175,8 +175,9 @@ class OrderedMultiDict(dict):
     """
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
-            raise TypeError('%s expected at most 1 argument, got %s'
-                            % (self.__class__.__name__, len(args)))
+            raise TypeError(
+                f'{self.__class__.__name__} expected at most 1 argument, got {len(args)}'
+            )
         super(OrderedMultiDict, self).__init__()
 
         self._clear_ll()
@@ -248,9 +249,7 @@ class OrderedMultiDict(dict):
         try:
             return super(OrderedMultiDict, self).__getitem__(k)[:]
         except KeyError:
-            if default is _MISSING:
-                return []
-            return default
+            return [] if default is _MISSING else default
 
     def clear(self):
         "Empty the dictionary."
@@ -355,11 +354,7 @@ class OrderedMultiDict(dict):
             for (selfk, selfv), (otherk, otherv) in zipped_items:
                 if selfk != otherk or selfv != otherv:
                     return False
-            if not(next(selfi, _MISSING) is _MISSING
-                   and next(otheri, _MISSING) is _MISSING):
-                # leftovers  (TODO: watch for StopIteration?)
-                return False
-            return True
+            return next(selfi, _MISSING) is _MISSING and next(otheri, _MISSING) is _MISSING
         elif hasattr(other, 'keys'):
             for selfk in self:
                 try:
@@ -392,9 +387,7 @@ class OrderedMultiDict(dict):
         super_self = super(OrderedMultiDict, self)
         if super_self.__contains__(k):
             self._remove_all(k)
-        if default is _MISSING:
-            return super_self.pop(k)
-        return super_self.pop(k, default)
+        return super_self.pop(k) if default is _MISSING else super_self.pop(k, default)
 
     def poplast(self, k=_MISSING, default=_MISSING):
         """Remove and return the most-recently inserted value under the key
@@ -406,9 +399,9 @@ class OrderedMultiDict(dict):
         if k is _MISSING:
             if self:
                 k = self.root[PREV][KEY]
+            elif default is _MISSING:
+                raise KeyError('empty %r' % type(self))
             else:
-                if default is _MISSING:
-                    raise KeyError('empty %r' % type(self))
                 return default
         try:
             self._remove(k)
@@ -627,7 +620,7 @@ class OrderedMultiDict(dict):
     def __repr__(self):
         cn = self.__class__.__name__
         kvs = ', '.join([repr((k, v)) for k, v in self.iteritems(multi=True)])
-        return '%s([%s])' % (cn, kvs)
+        return f'{cn}([{kvs}])'
 
     def viewkeys(self):
         "OMD.viewkeys() -> a set-like object providing a view on OMD's keys"
@@ -678,7 +671,6 @@ class FastIterOrderedMultiDict(OrderedMultiDict):
             if last[SPREV][SNEXT] is root:
                 last[SPREV][SNEXT] = cell
             last[NEXT] = last[SNEXT] = root[PREV] = root[SPREV] = cell
-            cells.append(cell)
         else:
             # if the previous was skipped, go back to the cell that
             # skipped it
@@ -689,7 +681,8 @@ class FastIterOrderedMultiDict(OrderedMultiDict):
             # skip me
             last[SNEXT] = root
             last[NEXT] = root[PREV] = root[SPREV] = cell
-            cells.append(cell)
+
+        cells.append(cell)
 
     def _remove(self, k):
         cells = self._map[k]
@@ -890,7 +883,7 @@ class OneToOne(dict):
     def __repr__(self):
         cn = self.__class__.__name__
         dict_repr = dict.__repr__(self)
-        return "%s(%s)" % (cn, dict_repr)
+        return f"{cn}({dict_repr})"
 
 
 # marker for the secret handshake used internally to set up the invert ManyToMany
@@ -1084,7 +1077,7 @@ class FrozenDict(dict):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%s)' % (cn, dict.__repr__(self))
+        return f'{cn}({dict.__repr__(self)})'
 
     def __reduce_ex__(self, protocol):
         return type(self), (dict(self),)
@@ -1109,7 +1102,7 @@ class FrozenDict(dict):
     # block everything else
     def _raise_frozen_typeerror(self, *a, **kw):
         "raises a TypeError, because FrozenDicts are immutable"
-        raise TypeError('%s object is immutable' % self.__class__.__name__)
+        raise TypeError(f'{self.__class__.__name__} object is immutable')
 
     __ior__ = __setitem__ = __delitem__ = update = _raise_frozen_typeerror
     setdefault = pop = popitem = clear = _raise_frozen_typeerror

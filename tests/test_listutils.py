@@ -40,7 +40,7 @@ def test_barrel_list():
 
     # a hundred thousand integers
     bl3 = BarrelList(range(int(1e5)))
-    for i in range(10000):
+    for _ in range(10000):
         # move the middle ten thou to the beginning
         bl3.insert(0, bl3.pop(len(bl3) // 2))
     assert len(bl3) == 1e5  # length didn't change
@@ -104,7 +104,7 @@ bl.extend(range(int(%s)))
         step = 512
         while abs(step) > 4:
             gc.collect()
-            for x in range(3):
+            for _ in range(3):
                 tottime = timeit('bl.insert(0, bl.pop(len(bl)//2))',
                                  _TUNE_SETUP % (size_factor, data_size),
                                  number=10000)

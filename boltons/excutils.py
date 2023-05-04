@@ -74,11 +74,7 @@ class ExceptionCauseMixin(Exception):
         if cause is None:
             return ret
         root_cause = getattr(cause, 'root_cause', None)
-        if root_cause is None:
-            ret.root_cause = cause
-        else:
-            ret.root_cause = root_cause
-
+        ret.root_cause = cause if root_cause is None else root_cause
         full_trace = getattr(cause, 'full_trace', None)
         if full_trace is not None:
             ret.full_trace = list(full_trace)
@@ -109,8 +105,7 @@ class ExceptionCauseMixin(Exception):
         traceback module's particular usage.
         """
         ret = []
-        trace_str = self._get_trace_str()
-        if trace_str:
+        if trace_str := self._get_trace_str():
             ret.extend(['Traceback (most recent call last):\n', trace_str])
         ret.append(self._get_exc_str())
         return ''.join(ret)
@@ -119,9 +114,7 @@ class ExceptionCauseMixin(Exception):
         args = getattr(self, 'args', [])
         if self.cause:
             args = args[1:]
-        if args and args[0]:
-            return args[0]
-        return ''
+        return args[0] if args and args[0] else ''
 
     def _get_trace_str(self):
         if not self.cause:
@@ -133,9 +126,7 @@ class ExceptionCauseMixin(Exception):
     def _get_exc_str(self, incl_name=True):
         cause_str = _format_exc(self.root_cause)
         message = self._get_message()
-        ret = []
-        if incl_name:
-            ret = [self.__class__.__name__, ': ']
+        ret = [self.__class__.__name__, ': '] if incl_name else []
         if message:
             ret.extend([message, ' (caused by ', cause_str, ')'])
         else:
@@ -145,18 +136,15 @@ class ExceptionCauseMixin(Exception):
     def __str__(self):
         if not self.cause:
             return super(ExceptionCauseMixin, self).__str__()
-        trace_str = self._get_trace_str()
-        ret = []
-        if trace_str:
-            message = self._get_message()
-            if message:
-                ret.extend([message, ' --- '])
-            ret.extend(['Wrapped traceback (most recent call last):\n',
-                        trace_str,
-                        self._get_exc_str(incl_name=True)])
-            return ''.join(ret)
-        else:
+        if not (trace_str := self._get_trace_str()):
             return self._get_exc_str(incl_name=False)
+        ret = []
+        if message := self._get_message():
+            ret.extend([message, ' --- '])
+        ret.extend(['Wrapped traceback (most recent call last):\n',
+                    trace_str,
+                    self._get_exc_str(incl_name=True)])
+        return ''.join(ret)
 
 
 def _format_exc(exc, message=None):
@@ -197,10 +185,7 @@ class _DeferredLine(object):
         line = linecache.getline(self.filename,
                                  self.lineno,
                                  self.module_globals)
-        if line:
-            line = line.strip()
-        else:
-            line = None
+        line = line.strip() if line else None
         self._line = line
         return line
 

@@ -128,9 +128,7 @@ class FilePerms(object):
             self.offset = offset
 
         def __get__(self, fp_obj, type_=None):
-            if fp_obj is None:
-                return self
-            return getattr(fp_obj, self.attribute)
+            return self if fp_obj is None else getattr(fp_obj, self.attribute)
 
         def __set__(self, fp_obj, value):
             cur = getattr(fp_obj, self.attribute)
@@ -234,7 +232,6 @@ try:
 except ImportError:
     def set_cloexec(fd):
         "Dummy set_cloexec for platforms without fcntl support"
-        pass
 else:
     def set_cloexec(fd):
         """Does a best-effort :func:`fcntl.fcntl` call to set a fd to be
@@ -293,18 +290,17 @@ if os.name == 'nt':
             os.rename(src, dst)
             return
         except WindowsError as we:
-            if we.errno == errno.EEXIST:
-                pass  # continue with the ReplaceFile logic below
-            else:
+            if we.errno != errno.EEXIST:
                 raise
 
         src = path_to_unicode(src)
         dst = path_to_unicode(dst)
-        res = _ReplaceFile(c_wchar_p(dst), c_wchar_p(src),
-                           None, 0, None, None)
-        if not res:
+        if res := _ReplaceFile(
+            c_wchar_p(dst), c_wchar_p(src), None, 0, None, None
+        ):
+            return
+        else:
             raise OSError('failed to replace %r with %r' % (dst, src))
-        return
 
     def atomic_rename(src, dst, overwrite=False):
         "Rename *src* to *dst*, replacing *dst* if *overwrite is True"
@@ -407,10 +403,11 @@ class AtomicSaver(object):
 
         self.dest_path = os.path.abspath(self.dest_path)
         self.dest_dir = os.path.dirname(self.dest_path)
-        if not self.part_filename:
-            self.part_path = dest_path + '.part'
-        else:
-            self.part_path = os.path.join(self.dest_dir, self.part_filename)
+        self.part_path = (
+            os.path.join(self.dest_dir, self.part_filename)
+            if self.part_filename
+            else f'{dest_path}.part'
+        )
         self.mode = 'w+' if self.text_mode else 'w+b'
         self.open_flags = _TEXT_OPENFLAGS if self.text_mode else _BIN_OPENFLAGS
 
@@ -457,11 +454,10 @@ class AtomicSaver(object):
         context manager, this method should be called explicitly
         before writing.
         """
-        if os.path.lexists(self.dest_path):
-            if not self.overwrite:
-                raise OSError(errno.EEXIST,
-                              'Overwrite disabled and file already exists',
-                              self.dest_path)
+        if os.path.lexists(self.dest_path) and not self.overwrite:
+            raise OSError(errno.EEXIST,
+                          'Overwrite disabled and file already exists',
+                          self.dest_path)
         if self.overwrite_part and os.path.lexists(self.part_path):
             os.unlink(self.part_path)
         self._open_part_file()
@@ -534,18 +530,15 @@ def iter_find_files(directory, patterns, ignored=None, include_dirs=False):
     for root, dirs, files in os.walk(directory):
         if include_dirs:
             for basename in dirs:
-                if pats_re.match(basename):
-                    if ignored and ign_re.match(basename):
-                        continue
-                    filename = os.path.join(root, basename)
-                    yield filename
-
+                if pats_re.match(basename) and (
+                    not ignored or not ign_re.match(basename)
+                ):
+                    yield os.path.join(root, basename)
         for basename in files:
-            if pats_re.match(basename):
-                if ignored and ign_re.match(basename):
-                    continue
-                filename = os.path.join(root, basename)
-                yield filename
+            if pats_re.match(basename) and (
+                not ignored or not ign_re.match(basename)
+            ):
+                yield os.path.join(root, basename)
     return
 
 
@@ -571,11 +564,7 @@ def copy_tree(src, dst, symlinks=False, ignore=None):
 
     """
     names = os.listdir(src)
-    if ignore is not None:
-        ignored_names = ignore(src, names)
-    else:
-        ignored_names = set()
-
+    ignored_names = ignore(src, names) if ignore is not None else set()
     mkdir_p(dst)
     errors = []
     for name in names:
@@ -601,10 +590,7 @@ def copy_tree(src, dst, symlinks=False, ignore=None):
     try:
         copystat(src, dst)
     except OSError as why:
-        if WindowsError is not None and isinstance(why, WindowsError):
-            # Copying file access times may fail on Windows
-            pass
-        else:
+        if WindowsError is None or not isinstance(why, WindowsError):
             errors.append((src, dst, str(why)))
     if errors:
         raise Error(errors)

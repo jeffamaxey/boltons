@@ -98,10 +98,9 @@ class TestRemap(object):
             remap([], exit='test')
 
     def test_sub_selfref(self):
-        coll = [0, 1, 2, 3]
         sub = []
         sub.append(sub)
-        coll.append(sub)
+        coll = [0, 1, 2, 3, sub]
         with pytest.raises(RuntimeError):
             # if equal, should recurse infinitely
             assert coll == remap(coll)
@@ -279,8 +278,7 @@ class TestRemap(object):
                  'dads': [{'name': 'Kurt',
                            'interests': ['python', 'recursion']}]}]
 
-        ref = set(['python', 'recursion', 'biking', 'museums',
-                   'pears', 'theater', 'manga'])
+        ref = {'python', 'recursion', 'biking', 'museums', 'pears', 'theater', 'manga'}
 
         remap(orig, enter=enter)
         assert all_interests == ref
@@ -337,7 +335,7 @@ class TestRemap(object):
 
     def test_remap_set(self):
         # explicit test for sets to make sure #84 is covered
-        s = set([1, 2, 3])
+        s = {1, 2, 3}
         assert remap(s) == s
 
         fs = frozenset([1, 2, 3])
@@ -472,7 +470,7 @@ def test_guiderator():
     guid = next(guid_iter)
     assert guid
     assert len(guid) == guid_iter.size
-    assert all([c in string.hexdigits for c in guid])
+    assert all(c in string.hexdigits for c in guid)
 
     guid2 = next(guid_iter)
 
@@ -492,14 +490,14 @@ def test_seqguiderator():
     guid = next(guid_iter)
     assert guid
     assert len(guid) == guid_iter.size
-    assert all([c in string.hexdigits for c in guid])
+    assert all(c in string.hexdigits for c in guid)
 
     guid2 = next(guid_iter)
 
     assert guid != guid2
 
     # custom size
-    for x in range(10000):
+    for _ in range(10000):
         guid_iter = GUIDerator(size=26)
         assert len(next(guid_iter)) == 26
 

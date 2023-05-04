@@ -260,8 +260,7 @@ START_TIME_INFO = {'time_utc': str(datetime.datetime.utcnow()),
 
 
 def get_python_info():
-    ret = {}
-    ret['argv'] = _escape_shell_args(sys.argv)
+    ret = {'argv': _escape_shell_args(sys.argv)}
     ret['bin'] = sys.executable
 
     # Even though compiler/build_date are already here, they're
@@ -338,7 +337,7 @@ def get_profile(**kwargs):
     ret['umask'] = oct(os.umask(os.umask(2))).rjust(3, '0')
 
     ret['python'] = get_python_info()
-    ret.update(START_TIME_INFO)
+    ret |= START_TIME_INFO
     ret['_eco_version'] = ECO_VERSION
 
     if scrub:
@@ -384,7 +383,7 @@ except ImportError:
 
                 contents = res[1:-1]
                 contents = contents.replace('"', '').replace(r'\"', '')
-                res = '"' + contents + '"'
+                res = f'"{contents}"'
             return res, is_read, is_rec
 
         pprint._safe_repr = _fake_safe_repr
@@ -404,11 +403,7 @@ except ImportError:
 
 
 def get_profile_json(indent=False):
-    if indent:
-        indent = 2
-    else:
-        indent = 0
-
+    indent = 2 if indent else 0
     data_dict = get_profile()
     return dumps(data_dict, indent)
 
@@ -423,11 +418,7 @@ def main():
 
 def _escape_shell_args(args, sep=' ', style=None):
     if not style:
-        if sys.platform == 'win32':
-            style = 'cmd'
-        else:
-            style = 'sh'
-
+        style = 'cmd' if sys.platform == 'win32' else 'sh'
     if style == 'sh':
         return _args2sh(args, sep=sep)
     elif style == 'cmd':

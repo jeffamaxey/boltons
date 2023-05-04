@@ -96,7 +96,7 @@ def reverse_iter_lines(file_obj, blocksize=DEFAULT_BLOCKSIZE, preseek=True, enco
         file_obj.seek(0, os.SEEK_END)
     buff = empty_bytes
     cur_pos = file_obj.tell()
-    while 0 < cur_pos:
+    while cur_pos > 0:
         read_size = min(blocksize, cur_pos)
         cur_pos -= read_size
         file_obj.seek(cur_pos, os.SEEK_SET)
@@ -235,9 +235,7 @@ if __name__ == '__main__':
         if '-h' in sys.argv or '--help' in sys.argv:
             print('loads one or more JSON Line files for basic validation.')
             return
-        verbose = False
-        if '-v' in sys.argv or '--verbose' in sys.argv:
-            verbose = True
+        verbose = '-v' in sys.argv or '--verbose' in sys.argv
         file_count, obj_count = 0, 0
         filenames = sys.argv[1:]
         for filename in filenames:
@@ -251,8 +249,9 @@ if __name__ == '__main__':
                     try:
                         next(iterator)
                     except ValueError:
-                        print('error reading object #%s around byte %s in %s'
-                              % (cur_obj_count + 1, iterator.cur_byte_pos, filename))
+                        print(
+                            f'error reading object #{cur_obj_count + 1} around byte {iterator.cur_byte_pos} in {filename}'
+                        )
                         return
                     except StopIteration:
                         break
@@ -263,8 +262,8 @@ if __name__ == '__main__':
                         if obj_count % 10000:
                             sys.stdout.write('%s\n' % obj_count)
         if verbose:
-            print('files checked: %s' % file_count)
-            print('objects loaded: %s' % obj_count)
+            print(f'files checked: {file_count}')
+            print(f'objects loaded: {obj_count}')
         return
 
     _main()

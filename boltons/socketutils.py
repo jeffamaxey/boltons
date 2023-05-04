@@ -152,21 +152,17 @@ class BufferedSocket(object):
         self.maxsize = int(maxsize)
 
         if timeout is _UNSET:
-            if self.sock.gettimeout() is None:
-                self.timeout = DEFAULT_TIMEOUT
-            else:
-                self.timeout = self.sock.gettimeout()
+            self.timeout = (
+                DEFAULT_TIMEOUT
+                if self.sock.gettimeout() is None
+                else self.sock.gettimeout()
+            )
+        elif timeout is None:
+            self.timeout = timeout
         else:
-            if timeout is None:
-                self.timeout = timeout
-            else:
-                self.timeout = float(timeout)
+            self.timeout = float(timeout)
 
-        if recvsize is _UNSET:
-            self._recvsize = self.maxsize
-        else:
-            self._recvsize = int(recvsize)
-
+        self._recvsize = self.maxsize if recvsize is _UNSET else int(recvsize)
         self._send_lock = RLock()
         self._recv_lock = RLock()
 
@@ -401,19 +397,17 @@ class BufferedSocket(object):
                         self.sock.settimeout(cur_timeout)
                     nxt = self.sock.recv(self._recvsize)
                 else:
-                    msg = ('connection closed after reading %s of %s requested'
-                           ' bytes' % (total_bytes, size))
+                    msg = f'connection closed after reading {total_bytes} of {size} requested bytes'
                     raise ConnectionClosed(msg)  # check recv buffer
             except socket.timeout:
                 self.rbuf = b''.join(chunks)
-                msg = 'read %s of %s bytes' % (total_bytes, size)
+                msg = f'read {total_bytes} of {size} bytes'
                 raise Timeout(timeout, msg)  # check recv buffer
             except Exception:
                 # received data is still buffered in the case of errors
                 self.rbuf = b''.join(chunks)
                 raise
-            extra_bytes = total_bytes - size
-            if extra_bytes:
+            if extra_bytes := total_bytes - size:
                 last, self.rbuf = nxt[:-extra_bytes], nxt[-extra_bytes:]
             else:
                 last, self.rbuf = nxt, b''
@@ -461,7 +455,7 @@ class BufferedSocket(object):
                             raise socket.timeout()
                         self.sock.settimeout(cur_timeout)
             except socket.timeout:
-                raise Timeout(timeout, '%s bytes unsent' % len(sbuf[0]))
+                raise Timeout(timeout, f'{len(sbuf[0])} bytes unsent')
         return total_sent
 
     def sendall(self, data, flags=0, timeout=_UNSET):
@@ -624,7 +618,7 @@ class MessageTooLong(Error):
     def __init__(self, bytes_read=None, delimiter=None):
         msg = 'message exceeded maximum size'
         if bytes_read is not None:
-            msg += '. %s bytes read' % (bytes_read,)
+            msg += f'. {bytes_read} bytes read'
         if delimiter is not None:
             msg += '. Delimiter not found: %r' % (delimiter,)
         super(MessageTooLong, self).__init__(msg)
@@ -639,9 +633,9 @@ class Timeout(socket.timeout, Error):
     def __init__(self, timeout, extra=""):
         msg = 'socket operation timed out'
         if timeout is not None:
-            msg += ' after %sms.' % (timeout * 1000)
+            msg += f' after {timeout * 1000}ms.'
         if extra:
-            msg += ' ' + extra
+            msg += f' {extra}'
         super(Timeout, self).__init__(msg)
 
 
@@ -736,8 +730,7 @@ class NetstringMessageTooLong(NetstringProtocolError):
     the connection instead of trying to recover.
     """
     def __init__(self, size, maxsize):
-        msg = ('netstring message length exceeds configured maxsize: %s > %s'
-               % (size, maxsize))
+        msg = f'netstring message length exceeds configured maxsize: {size} > {maxsize}'
         super(NetstringMessageTooLong, self).__init__(msg)
 
 

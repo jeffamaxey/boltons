@@ -46,14 +46,10 @@ def test_multibyte_delim():
     """
 
     delim = b'\r\n'
+    empty = b''
+    small_one = b'1'
     for with_delim in (True, False):
-        if with_delim:
-            cond_delim = b'\r\n'
-        else:
-            cond_delim = b''
-
-        empty = b''
-        small_one = b'1'
+        cond_delim = b'\r\n' if with_delim else b''
         big_two = b'2' * 2048
         for ms in (3, 5, 1024, None):
             x, y = socket.socketpair()
@@ -310,7 +306,7 @@ def test_socketutils_netstring():
     for i in range(1000):
         resps.append(client.read_ns())
     e = time.time()
-    assert all([r == b'pong' for r in resps])
+    assert all(r == b'pong' for r in resps)
     assert client.bsock.getrecvbuffer() == b''
     dur = e - s
     print("netstring pipelined ping-pong latency", dur, "ms")

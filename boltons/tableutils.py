@@ -107,8 +107,8 @@ def to_text(obj, maxlen=None):
         except Exception:
             text = unicode(object.__repr__(obj))
     if maxlen and len(text) > maxlen:
-        text = text[:maxlen - 3] + '...'
-        # TODO: inverse of ljust/rjust/center
+        text = f'{text[:maxlen - 3]}...'
+            # TODO: inverse of ljust/rjust/center
     return text
 
 
@@ -307,7 +307,7 @@ class Table(object):
         if self.headers:
             self._width = len(self.headers)
             return
-        self._width = max([len(d) for d in self._data])
+        self._width = max(len(d) for d in self._data)
 
     def _fill(self):
         width, filler = self._width, [None]
@@ -394,11 +394,11 @@ class Table(object):
                     # not particularly happy about this rewind-y approach
                     is_seq = False
                     to_check = data
+        elif type(data) in _DNR:
+            # hmm, got scalar data.
+            # raise an exception or make an exception, nahmsayn?
+            return cls([[data]], headers=headers, metadata=metadata)
         else:
-            if type(data) in _DNR:
-                # hmm, got scalar data.
-                # raise an exception or make an exception, nahmsayn?
-                return cls([[data]], headers=headers, metadata=metadata)
             to_check = data
         if not _data_type:
             for it in cls._input_types:
@@ -481,9 +481,7 @@ class Table(object):
                                                    with_metadata=False,
                                                    max_depth=max_depth)
             if with_metadata != 'bottom':
-                lines.append(metadata_html)
-                lines.append('<br />')
-
+                lines.extend((metadata_html, '<br />'))
         if with_headers and self.headers:
             headers.extend(self.headers)
             headers.extend([None] * (self._width - len(self.headers)))
@@ -566,7 +564,7 @@ class Table(object):
                     if isinstance(cell, Table):
                         _fill_parts.append(cell.to_html(max_depth=new_depth))
                     else:
-                        _fill_parts.append(esc(row[i]))
+                        _fill_parts.append(esc(cell))
             else:
                 _fill_parts = [esc(row[i]) for row in self._data]
             line_parts.extend([td, _tdtd.join(_fill_parts), _td_tr])
@@ -591,10 +589,16 @@ class Table(object):
                 cur_widths.append(len(to_text(headers[idx], maxlen=maxlen)))
             widths.append(max(cur_widths))
         if with_headers:
-            lines.append(' | '.join([h.center(widths[i])
-                                     for i, h in enumerate(headers)]))
-            lines.append('-|-'.join(['-' * w for w in widths]))
-        for row in text_data:
-            lines.append(' | '.join([cell.center(widths[j])
-                                     for j, cell in enumerate(row)]))
+            lines.extend(
+                (
+                    ' | '.join(
+                        [h.center(widths[i]) for i, h in enumerate(headers)]
+                    ),
+                    '-|-'.join(['-' * w for w in widths]),
+                )
+            )
+        lines.extend(
+            ' | '.join([cell.center(widths[j]) for j, cell in enumerate(row)])
+            for row in text_data
+        )
         return '\n'.join(lines)

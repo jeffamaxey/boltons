@@ -137,7 +137,7 @@ class _StatsProperty(object):
     def __init__(self, name, func):
         self.name = name
         self.func = func
-        self.internal_name = '_' + name
+        self.internal_name = f'_{name}'
 
         doc = func.__doc__ or ''
         pre_doctest_doc, _, _ = doc.partition('>>>')
@@ -176,11 +176,7 @@ class Stats(object):
     def __init__(self, data, default=0.0, use_copy=True, is_sorted=False):
         self._use_copy = use_copy
         self._is_sorted = is_sorted
-        if use_copy:
-            self.data = list(data)
-        else:
-            self.data = data
-
+        self.data = list(data) if use_copy else data
         self.default = default
         cls = self.__class__
         self._prop_attr_names = [a for a in dir(self)
@@ -257,9 +253,7 @@ class Stats(object):
         >>> Stats([2, 1, 3]).max
         3
         """
-        if self._is_sorted:
-            return self.data[-1]
-        return max(self.data)
+        return self.data[-1] if self._is_sorted else max(self.data)
     max = _StatsProperty('max', _calc_max)
 
     def _calc_min(self):
@@ -269,9 +263,7 @@ class Stats(object):
         >>> Stats([2, 1, 3]).min
         1
         """
-        if self._is_sorted:
-            return self.data[0]
-        return min(self.data)
+        return self.data[0] if self._is_sorted else min(self.data)
     min = _StatsProperty('min', _calc_min)
 
     def _calc_median(self):
@@ -368,8 +360,7 @@ class Stats(object):
         >>> print('%1.3f' % rel_std_dev(range(97)))
         0.583
         """
-        abs_mean = abs(self.mean)
-        if abs_mean:
+        if abs_mean := abs(self.mean):
             return self.std_dev / abs_mean
         else:
             return self.default
@@ -439,11 +430,10 @@ class Stats(object):
         if round(c1, precision) == 0:
             if round(beta2, precision) == 3:
                 return 0  # Normal
-            else:
-                if beta2 < 3:
-                    return 2  # Symmetric Beta
-                elif beta2 > 3:
-                    return 7
+            if beta2 < 3:
+                return 2  # Symmetric Beta
+            elif beta2 > 3:
+                return 7
         elif round(c2, precision) == 0:
             return 3  # Gamma
         else:
@@ -605,9 +595,7 @@ class Stats(object):
             except KeyError:
                 count_map[idx] = 1
 
-        bin_counts = [(b, count_map.get(i, 0)) for i, b in enumerate(bins)]
-
-        return bin_counts
+        return [(b, count_map.get(i, 0)) for i, b in enumerate(bins)]
 
     def format_histogram(self, bins=None, **kw):
         """Produces a textual histogram of the data, using fixed-width bins,
@@ -712,21 +700,22 @@ class Stats(object):
             q_val = self.get_quantile(q)
             q_items.append((str(q), q_val))
 
-        items = [('count', self.count),
-                 ('mean', self.mean),
-                 ('std_dev', self.std_dev),
-                 ('mad', self.mad),
-                 ('min', self.min)]
+        items = [
+            ('count', self.count),
+            ('mean', self.mean),
+            ('std_dev', self.std_dev),
+            ('mad', self.mad),
+            ('min', self.min),
+            *q_items,
+            ('max', self.max),
+        ]
 
-        items.extend(q_items)
-        items.append(('max', self.max))
         if format == 'dict':
             ret = dict(items)
         elif format == 'list':
             ret = items
         elif format == 'text':
-            ret = '\n'.join(['%s%s' % ((label + ':').ljust(10), val)
-                             for label, val in items])
+            ret = '\n'.join([f"{f'{label}:'.ljust(10)}{val}" for label, val in items])
         return ret
 
 
@@ -768,7 +757,7 @@ for attr_name, attr in list(Stats.__dict__.items()):
         func = _get_conv_func(attr_name)
         func.__doc__ = attr.func.__doc__
         globals()[attr_name] = func
-        delattr(Stats, '_calc_' + attr_name)
+        delattr(Stats, f'_calc_{attr_name}')
 # cleanup
 del attr
 del attr_name
@@ -798,12 +787,12 @@ def format_histogram_counts(bin_counts, width=None, format_bin=None):
             width = 80
 
     bins = [b for b, _ in bin_counts]
-    count_max = max([count for _, count in bin_counts])
+    count_max = max(count for _, count in bin_counts)
     count_cols = len(str(count_max))
 
-    labels = ['%s' % format_bin(b) for b in bins]
-    label_cols = max([len(l) for l in labels])
-    tmp_line = '%s: %s #' % ('x' * label_cols, count_max)
+    labels = [f'{format_bin(b)}' for b in bins]
+    label_cols = max(len(l) for l in labels)
+    tmp_line = f"{'x' * label_cols}: {count_max} #"
 
     bar_cols = max(width - len(tmp_line), 3)
     line_k = float(bar_cols) / count_max

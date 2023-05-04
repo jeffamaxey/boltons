@@ -32,11 +32,11 @@ ALL_DATASETS = [EMPTY_DATA, LAYER_RANGE_DATA, SIMPLE_RANGE_DATA, NORM_DATA]
 
 def test_check_sum():
     for data in ALL_DATASETS:
-        for bin_size in [0, 1, 10, 99]:
+        for _ in [0, 1, 10, 99]:
             # bin_size=0 tests freedman
             stats = Stats(data)
             hist_counts = stats.get_histogram_counts()
-            hist_counts_sum = sum([c for _, c in hist_counts])
+            hist_counts_sum = sum(c for _, c in hist_counts)
             assert len(data) == hist_counts_sum
             if not data:
                 continue
@@ -55,9 +55,9 @@ def test_norm_regression():
     subpar_bin_out = stats.format_histogram([12.0], width=80)
     assert subpar_bin_out == NORM_DATA_SINGLE_SUBPAR_BIN_OUTPUT
 
-    format_bin_out = stats.format_histogram(5,
-                                            width=80,
-                                            format_bin=lambda b: '%sms' % b)
+    format_bin_out = stats.format_histogram(
+        5, width=80, format_bin=lambda b: f'{b}ms'
+    )
     assert format_bin_out == NORM_DATA_FORMAT_BIN_OUTPUT
 
 

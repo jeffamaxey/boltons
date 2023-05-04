@@ -323,9 +323,11 @@ class LRI(dict):
                 return True
             if len(other) != len(self):
                 return False
-            if not isinstance(other, LRI):
-                return other == self
-            return super(LRI, self).__eq__(other)
+            return (
+                super(LRI, self).__eq__(other)
+                if isinstance(other, LRI)
+                else other == self
+            )
 
     def __ne__(self, other):
         return not (self == other)
@@ -403,7 +405,7 @@ class _HashedKey(list):
         return self.hash_value
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, list.__repr__(self))
+        return f'{self.__class__.__name__}({list.__repr__(self)})'
 
 
 def make_cache_key(args, kwargs, typed=False,
@@ -643,7 +645,7 @@ class cachedproperty(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '<%s func=%s>' % (cn, self.func)
+        return f'<{cn} func={self.func}>'
 
 
 class ThresholdCounter(object):
@@ -737,15 +739,13 @@ class ThresholdCounter(object):
         if n <= 0:
             return []
         ret = sorted(self.iteritems(), key=lambda x: x[1], reverse=True)
-        if n is None or n >= len(ret):
-            return ret
-        return ret[:n]
+        return ret if n is None or n >= len(ret) else ret[:n]
 
     def get_common_count(self):
         """Get the sum of counts for keys exceeding the configured data
         threshold.
         """
-        return sum([count for count, _ in self._count_map.values()])
+        return sum(count for count, _ in self._count_map.values())
 
     def get_uncommon_count(self):
         """Get the sum of counts for keys that were culled because the
@@ -812,7 +812,7 @@ class ThresholdCounter(object):
         if iterable is not None:
             if callable(getattr(iterable, 'iteritems', None)):
                 for key, count in iterable.iteritems():
-                    for i in xrange(count):
+                    for _ in xrange(count):
                         self.add(key)
             else:
                 for key in iterable:
@@ -842,10 +842,7 @@ class MinIDMap(object):
         except KeyError:
             pass
 
-        if self.free:  # if there are any free IDs, use the smallest
-            nxt = heapq.heappop(self.free)
-        else:  # if there are no free numbers, use the next highest ID
-            nxt = len(self.mapping)
+        nxt = heapq.heappop(self.free) if self.free else len(self.mapping)
         ref = weakref.ref(a, self._clean)
         self.mapping[a] = (nxt, ref)
         self.ref_map[ref] = nxt

@@ -136,11 +136,11 @@ class mbox_readonlydir(mailbox.mbox):
                 self._file.write(new_file.read())
             else:
                 while True:
-                    buffer = new_file.read(4096)
-                    if not buffer:
-                        break
-                    self._file.write(buffer)
+                    if buffer := new_file.read(4096):
+                        self._file.write(buffer)
 
+                    else:
+                        break
             # Delete the rest.
             self._file.truncate()
 

@@ -85,15 +85,7 @@ if not _IS_PY35:
 else:
     from inspect import formatannotation
 
-    def inspect_formatargspec(
-            args, varargs=None, varkw=None, defaults=None,
-            kwonlyargs=(), kwonlydefaults={}, annotations={},
-            formatarg=str,
-            formatvarargs=lambda name: '*' + name,
-            formatvarkw=lambda name: '**' + name,
-            formatvalue=lambda value: '=' + repr(value),
-            formatreturns=lambda text: ' -> ' + text,
-            formatannotation=formatannotation):
+    def inspect_formatargspec(args, varargs=None, varkw=None, defaults=None, kwonlyargs=(), kwonlydefaults={}, annotations={}, formatarg=str, formatvarargs=lambda name: f'*{name}', formatvarkw=lambda name: f'**{name}', formatvalue=lambda value: f'={repr(value)}', formatreturns=lambda text: f' -> {text}', formatannotation=formatannotation):
         """Copy formatargspec from python 3.7 standard library.
         Python 3 has deprecated formatargspec and requested that Signature
         be used instead, however this requires a full reimplementation
@@ -105,8 +97,9 @@ else:
         def formatargandannotation(arg):
             result = formatarg(arg)
             if arg in annotations:
-                result += ': ' + formatannotation(annotations[arg])
+                result += f': {formatannotation(annotations[arg])}'
             return result
+
         specs = []
         if defaults:
             firstdefault = len(args) - len(defaults)
@@ -356,14 +349,14 @@ def format_invocation(name='', args=(), kwargs=None, **kw):
         kwarg_items = [(k, kwargs[k]) for k in sorted(kwargs)]
     else:
         kwarg_items = kwargs
-    kw_text = ', '.join(['%s=%s' % (k, _repr(v)) for k, v in kwarg_items])
+    kw_text = ', '.join([f'{k}={_repr(v)}' for k, v in kwarg_items])
 
     all_args_text = a_text
     if all_args_text and kw_text:
         all_args_text += ', '
     all_args_text += kw_text
 
-    return '%s(%s)' % (name, all_args_text)
+    return f'{name}({all_args_text})'
 
 
 def format_exp_repr(obj, pos_names, req_names=None, opt_names=None, opt_key=None):
@@ -473,9 +466,8 @@ def format_nonexp_repr(obj, req_names=None, opt_names=None, opt_key=None):
     labels = ['%s=%r' % (name, val) for name, val in items
               if not (name in opt_names and opt_key(val))]
     if not labels:
-        labels = ['id=%s' % id(obj)]
-    ret = '<%s %s>' % (cn, ' '.join(labels))
-    return ret
+        labels = [f'id={id(obj)}']
+    return f"<{cn} {' '.join(labels)}>"
 
 
 
@@ -630,9 +622,9 @@ def update_wrapper(wrapper, func, injected=None, expected=None, build_from=None,
         fb.add_arg(arg, default)  # may raise ExistingArgument
 
     if fb.is_async:
-        fb.body = 'return await _call(%s)' % fb.get_invocation_str()
+        fb.body = f'return await _call({fb.get_invocation_str()})'
     else:
-        fb.body = 'return _call(%s)' % fb.get_invocation_str()
+        fb.body = f'return _call({fb.get_invocation_str()})'
 
     execdict = dict(_call=wrapper, _func=func)
     fully_wrapped = fb.get_func(execdict, with_dict=update_dict)
@@ -775,8 +767,7 @@ class FunctionBuilder(object):
         @classmethod
         def _argspec_to_dict(cls, f):
             argspec = inspect.getfullargspec(f)
-            return dict((attr, getattr(argspec, attr))
-                        for attr in cls._argspec_defaults)
+            return {attr: getattr(argspec, attr) for attr in cls._argspec_defaults}
 
     _defaults = {'doc': str,
                  'dict': dict,
@@ -825,11 +816,7 @@ class FunctionBuilder(object):
             with_annotations is ignored on Python 2.  On Python 3 signature
             will omit annotations if it is set to False.
             """
-            if with_annotations:
-                annotations = self.annotations
-            else:
-                annotations = {}
-
+            annotations = self.annotations if with_annotations else {}
             return inspect_formatargspec(self.args,
                                          self.varargs,
                                          self.varkw,
@@ -849,9 +836,8 @@ class FunctionBuilder(object):
             kwonly_pairs = None
             formatters = {}
             if self.kwonlyargs:
-                kwonly_pairs = dict((arg, arg)
-                                    for arg in self.kwonlyargs)
-                formatters['formatvalue'] = lambda value: '=' + value
+                kwonly_pairs = {arg: arg for arg in self.kwonlyargs}
+                formatters['formatvalue'] = lambda value: f'={value}'
 
             sig = inspect_formatargspec(self.args,
                                         self.varargs,
@@ -890,7 +876,7 @@ class FunctionBuilder(object):
                       'annotations': getattr(func, "__annotations__", {}),
                       'dict': getattr(func, '__dict__', {})}
 
-        kwargs.update(cls._argspec_to_dict(func))
+        kwargs |= cls._argspec_to_dict(func)
 
         if _inspect_iscoroutinefunction(func):
             kwargs['is_async'] = True
@@ -917,11 +903,9 @@ class FunctionBuilder(object):
         execdict = execdict or {}
         body = self.body or self._default_body
 
-        tmpl = 'def {name}{sig_str}:'
-        tmpl += '\n{body}'
-
+        tmpl = 'def {name}{sig_str}:' + '\n{body}'
         if self.is_async:
-            tmpl = 'async ' + tmpl
+            tmpl = f'async {tmpl}'
 
         body = _indent(self.body, ' ' * self.indent)
 
@@ -954,16 +938,15 @@ class FunctionBuilder(object):
         """
         ret = dict(reversed(list(zip(reversed(self.args),
                                      reversed(self.defaults or [])))))
-        kwonlydefaults = getattr(self, 'kwonlydefaults', None)
-        if kwonlydefaults:
-            ret.update(kwonlydefaults)
+        if kwonlydefaults := getattr(self, 'kwonlydefaults', None):
+            ret |= kwonlydefaults
         return ret
 
     def get_arg_names(self, only_required=False):
         arg_names = tuple(self.args) + tuple(getattr(self, 'kwonlyargs', ()))
         if only_required:
             defaults_dict = self.get_defaults_dict()
-            arg_names = tuple([an for an in arg_names if an not in defaults_dict])
+            arg_names = tuple(an for an in arg_names if an not in defaults_dict)
         return arg_names
 
     if _IS_PY2:
@@ -1023,7 +1006,7 @@ class FunctionBuilder(object):
                 self.kwonlydefaults.pop(arg_name, None)
         else:
             d_dict.pop(arg_name, None)
-            self.defaults = tuple([d_dict[a] for a in args if a in d_dict])
+            self.defaults = tuple(d_dict[a] for a in args if a in d_dict)
         return
 
     def _compile(self, src, execdict):
@@ -1066,33 +1049,28 @@ except ImportError:
         """
         convert = {
             '__lt__': [
-                ('__gt__',
-                 lambda self, other: not (self < other or self == other)),
-                ('__le__',
-                 lambda self, other: self < other or self == other),
-                ('__ge__',
-                 lambda self, other: not self < other)],
+                ('__gt__', lambda self, other: self >= other and self != other),
+                ('__le__', lambda self, other: self < other or self == other),
+                ('__ge__', lambda self, other: not self < other),
+            ],
             '__le__': [
-                ('__ge__',
-                 lambda self, other: not self <= other or self == other),
-                ('__lt__',
-                 lambda self, other: self <= other and not self == other),
-                ('__gt__',
-                 lambda self, other: not self <= other)],
+                ('__ge__', lambda self, other: not self <= other or self == other),
+                ('__lt__', lambda self, other: self <= other and self != other),
+                ('__gt__', lambda self, other: not self <= other),
+            ],
             '__gt__': [
-                ('__lt__',
-                 lambda self, other: not (self > other or self == other)),
-                ('__ge__',
-                 lambda self, other: self > other or self == other),
-                ('__le__',
-                 lambda self, other: not self > other)],
+                ('__lt__', lambda self, other: self <= other and self != other),
+                ('__ge__', lambda self, other: self > other or self == other),
+                ('__le__', lambda self, other: not self > other),
+            ],
             '__ge__': [
-                ('__le__',
-                 lambda self, other: (not self >= other) or self == other),
-                ('__gt__',
-                 lambda self, other: self >= other and not self == other),
-                ('__lt__',
-                 lambda self, other: not self >= other)]
+                (
+                    '__le__',
+                    lambda self, other: (not self >= other) or self == other,
+                ),
+                ('__gt__', lambda self, other: self >= other and self != other),
+                ('__lt__', lambda self, other: not self >= other),
+            ],
         }
         roots = set(dir(cls)) & set(convert)
         if not roots:

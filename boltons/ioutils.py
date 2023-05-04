@@ -270,10 +270,7 @@ class SpooledBytesIO(SpooledIOBase):
         return self.buffer.seek(pos, mode)
 
     def readline(self, length=None):
-        if length:
-            return self.buffer.readline(length)
-        else:
-            return self.buffer.readline()
+        return self.buffer.readline(length) if length else self.buffer.readline()
 
     def readlines(self, sizehint=0):
         return self.buffer.readlines(sizehint)
@@ -449,10 +446,10 @@ class SpooledStringIO(SpooledIOBase):
         self.buffer.seek(0)
         total = 0
         while True:
-            ret = self.read(READ_CHUNK_SIZE)
-            if not ret:
+            if ret := self.read(READ_CHUNK_SIZE):
+                total += len(ret)
+            else:
                 break
-            total += len(ret)
         self.buffer.seek(pos)
         return total
 
@@ -489,14 +486,17 @@ class MultiFileReader(object):
     """
 
     def __init__(self, *fileobjs):
-        if not all([callable(getattr(f, 'read', None)) and
-                    callable(getattr(f, 'seek', None)) for f in fileobjs]):
+        if not all(
+            callable(getattr(f, 'read', None))
+            and callable(getattr(f, 'seek', None))
+            for f in fileobjs
+        ):
             raise TypeError('MultiFileReader expected file-like objects'
                             ' with .read() and .seek()')
-        if all([is_text_fileobj(f) for f in fileobjs]):
+        if all(is_text_fileobj(f) for f in fileobjs):
             # codecs.open and io.TextIOBase
             self._joiner = u''
-        elif any([is_text_fileobj(f) for f in fileobjs]):
+        elif any(is_text_fileobj(f) for f in fileobjs):
             raise ValueError('All arguments to MultiFileReader must handle'
                              ' bytes OR text, not a mix')
         else:

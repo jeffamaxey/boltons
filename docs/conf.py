@@ -21,8 +21,8 @@ from pprint import pprint
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
-PROJECT_PATH = os.path.abspath(CUR_PATH + '/../')
-PACKAGE_PATH = os.path.abspath(CUR_PATH + '/../boltons/')
+PROJECT_PATH = os.path.abspath(f'{CUR_PATH}/../')
+PACKAGE_PATH = os.path.abspath(f'{CUR_PATH}/../boltons/')
 sys.path.insert(0, PROJECT_PATH)
 sys.path.insert(0, PACKAGE_PATH)
 

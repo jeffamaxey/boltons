@@ -42,7 +42,6 @@ def test_strip_ansi():
 def test_asciify():
     ref = u'Beyoncé'
     b = strutils.asciify(ref)
-    assert len(b) == len(b)
     assert b[-1:].decode('ascii') == 'e'
 
 

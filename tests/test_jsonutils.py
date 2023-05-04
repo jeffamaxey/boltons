@@ -7,8 +7,8 @@ from boltons.jsonutils import (JSONLIterator,
                                reverse_iter_lines)
 
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
-NEWLINES_DATA_PATH = CUR_PATH + '/newlines_test_data.txt'
-JSONL_DATA_PATH = CUR_PATH + '/jsonl_test_data.txt'
+NEWLINES_DATA_PATH = f'{CUR_PATH}/newlines_test_data.txt'
+JSONL_DATA_PATH = f'{CUR_PATH}/jsonl_test_data.txt'
 
 
 def _test_reverse_iter_lines(filename, blocksize=DEFAULT_BLOCKSIZE):

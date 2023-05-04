@@ -118,10 +118,10 @@ def floor(x, options=None):
         return _floor(x)
     options = sorted(options)
 
-    i = bisect.bisect_right(options, x)
-    if not i:
+    if i := bisect.bisect_right(options, x):
+        return options[i - 1]
+    else:
         raise ValueError("no floor options less than or equal to: %r" % x)
-    return options[i - 1]
 
 
 try:
@@ -163,12 +163,9 @@ class Bits(object):
                 if val.startswith('0x'):
                     val = int(val, 16)
                 else:
-                    if val:
-                        val = int(val, 2)
-                    else:
-                        val = 0
-            if type(val) not in _int_types:
-                raise TypeError('initialized with bad type: {0}'.format(type(val).__name__))
+                    val = int(val, 2) if val else 0
+        if type(val) not in _int_types:
+            raise TypeError('initialized with bad type: {0}'.format(type(val).__name__))
         if val < 0:
             raise ValueError('Bits cannot represent negative values')
         if len_ is None:
@@ -223,8 +220,7 @@ class Bits(object):
     def as_hex(self):
         # make template to pad out to number of bytes necessary to represent bits
         tmpl = '%0{0}X'.format(2 * (self.len // 8 + ((self.len % 8) != 0)))
-        ret = tmpl % self.val
-        return ret
+        return tmpl % self.val
 
     def as_int(self):
         return self.val
@@ -245,7 +241,7 @@ class Bits(object):
         if isinstance(hex, bytes):
             hex = hex.decode('ascii')
         if not hex.startswith('0x'):
-            hex = '0x' + hex
+            hex = f'0x{hex}'
         return cls(hex)
 
     @classmethod

@@ -97,9 +97,9 @@ def construct_format_field_str(fname, fspec, conv):
         return ''
     ret = '{' + fname
     if conv:
-        ret += '!' + conv
+        ret += f'!{conv}'
     if fspec:
-        ret += ':' + fspec
+        ret += f':{fspec}'
     ret += '}'
     return ret
 
@@ -136,7 +136,7 @@ def infer_positional_format_args(fstr):
         if prev_end < start:
             ret += fstr[prev_end:start]
         prev_end = end
-        if group == '{{' or group == '}}':
+        if group in ['{{', '}}']:
             ret += group
             continue
         ret += '{%s%s' % (max_anon, group[1:])
@@ -248,10 +248,11 @@ class BaseFormatField(object):
     def set_fspec(self, fspec):
         "Set the field spec."
         fspec = fspec or ''
-        subfields = []
-        for sublit, subfname, _, _ in Formatter().parse(fspec):
-            if subfname is not None:
-                subfields.append(subfname)
+        subfields = [
+            subfname
+            for sublit, subfname, _, _ in Formatter().parse(fspec)
+            if subfname is not None
+        ]
         self.subfields = subfields
         self.fspec = fspec
         self.type_char = fspec[-1:]
@@ -277,7 +278,7 @@ class BaseFormatField(object):
         elif self.fspec != '':
             args.append(self.fspec)
         args_repr = ', '.join([repr(a) for a in args])
-        return '%s(%s)' % (cn, args_repr)
+        return f'{cn}({args_repr})'
 
     def __str__(self):
         return self.fstr

@@ -117,7 +117,7 @@ def augpath(path, suffix='', prefix='', ext=None, base=None, dpath=None,
         # The first dot defines the extension
         parts = fname.split('.', 1)
         orig_base = parts[0]
-        orig_ext = '' if len(parts) == 1 else '.' + parts[1]
+        orig_ext = '' if len(parts) == 1 else f'.{parts[1]}'
     else:
         # The last dot defines the extension
         orig_base, orig_ext = splitext(fname)
@@ -130,8 +130,7 @@ def augpath(path, suffix='', prefix='', ext=None, base=None, dpath=None,
         base = orig_base
     # Recombine into new path
     new_fname = ''.join((prefix, base, suffix, ext))
-    newpath = join(dpath, new_fname)
-    return newpath
+    return join(dpath, new_fname)
 
 
 def shrinkuser(path, home='~'):

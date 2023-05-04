@@ -155,10 +155,11 @@ class Callpoint(object):
     def __repr__(self):
         cn = self.__class__.__name__
         args = [getattr(self, s, None) for s in self.__slots__]
-        if not any(args):
-            return super(Callpoint, self).__repr__()
-        else:
-            return '%s(%s)' % (cn, ', '.join([repr(a) for a in args]))
+        return (
+            f"{cn}({', '.join([repr(a) for a in args])})"
+            if any(args)
+            else super(Callpoint, self).__repr__()
+        )
 
     def tb_frame_str(self):
         """Render the Callpoint as it would appear in a standard printed
@@ -309,8 +310,8 @@ class TracebackInfo(object):
         ret = []
         if tb is None:
             tb = sys.exc_info()[2]
-            if tb is None:
-                raise ValueError('no tb set and no exception being handled')
+        if tb is None:
+            raise ValueError('no tb set and no exception being handled')
         if limit is None:
             limit = getattr(sys, 'tracebacklimit', 1000)
         n = 0
@@ -342,12 +343,8 @@ class TracebackInfo(object):
     def __repr__(self):
         cn = self.__class__.__name__
 
-        if self.frames:
-            frame_part = ' last=%r' % (self.frames[-1],)
-        else:
-            frame_part = ''
-
-        return '<%s frames=%s%s>' % (cn, len(self.frames), frame_part)
+        frame_part = ' last=%r' % (self.frames[-1],) if self.frames else ''
+        return f'<{cn} frames={len(self.frames)}{frame_part}>'
 
     def __str__(self):
         return self.get_formatted()
@@ -358,9 +355,9 @@ class TracebackInfo(object):
         other words, mimics :func:`traceback.format_tb` and
         :func:`traceback.format_stack`.
         """
-        ret = 'Traceback (most recent call last):\n'
-        ret += ''.join([f.tb_frame_str() for f in self.frames])
-        return ret
+        return 'Traceback (most recent call last):\n' + ''.join(
+            [f.tb_frame_str() for f in self.frames]
+        )
 
 
 class ExceptionInfo(object):
@@ -406,7 +403,7 @@ class ExceptionInfo(object):
         type_str = exc_type.__name__
         type_mod = exc_type.__module__
         if type_mod not in ("__main__", "__builtin__", "exceptions", "builtins"):
-            type_str = '%s.%s' % (type_mod, type_str)
+            type_str = f'{type_mod}.{type_str}'
         val_str = _some_str(exc_value)
         tb_info = cls.tb_info_type.from_traceback(traceback)
         return cls(type_str, val_str, tb_info)
@@ -445,10 +442,10 @@ class ExceptionInfo(object):
         """
         # TODO: add SyntaxError formatting
         tb_str = self.tb_info.get_formatted()
-        return ''.join([tb_str, '%s: %s' % (self.exc_type, self.exc_msg)])
+        return ''.join([tb_str, f'{self.exc_type}: {self.exc_msg}'])
 
     def get_formatted_exception_only(self):
-        return '%s: %s' % (self.exc_type, self.exc_msg)
+        return f'{self.exc_type}: {self.exc_msg}'
 
 
 class ContextualCallpoint(Callpoint):
@@ -503,7 +500,7 @@ class ContextualCallpoint(Callpoint):
             try:
                 local_reprs[k] = repr(v)
             except Exception:
-                surrogate = '<unprintable %s object>' % type(v).__name__
+                surrogate = f'<unprintable {type(v).__name__} object>'
                 local_reprs[k] = surrogate
         return
 
@@ -600,20 +597,18 @@ def format_exception_only(etype, value):
     stype = etype.__name__
     smod = etype.__module__
     if smod not in ("__main__", "builtins", "exceptions"):
-        stype = smod + '.' + stype
+        stype = f'{smod}.{stype}'
 
     if not issubclass(etype, SyntaxError):
         return [_format_final_exc_line(stype, value)]
 
-    # It was a syntax error; show exactly where the problem was found.
-    lines = []
     filename = value.filename or "<string>"
     lineno = str(value.lineno) or '?'
-    lines.append('  File "%s", line %s\n' % (filename, lineno))
+    lines = ['  File "%s", line %s\n' % (filename, lineno)]
     badline = value.text
-    offset = value.offset
     if badline is not None:
         lines.append('    %s\n' % badline.strip())
+        offset = value.offset
         if offset is not None:
             caretspace = badline.rstrip('\n')[:offset].lstrip()
             # non-space whitespace (likes tabs) must be kept for alignment
@@ -636,16 +631,16 @@ def _some_str(value):
         return value.encode("ascii", "backslashreplace")
     except Exception:
         pass
-    return '<unprintable %s object>' % type(value).__name__
+    return f'<unprintable {type(value).__name__} object>'
 
 
 def _format_final_exc_line(etype, value):
     valuestr = _some_str(value)
-    if value is None or not valuestr:
-        line = "%s\n" % etype
-    else:
-        line = "%s: %s\n" % (etype, valuestr)
-    return line
+    return (
+        "%s\n" % etype
+        if value is None or not valuestr
+        else "%s: %s\n" % (etype, valuestr)
+    )
 
 
 def print_exception(etype, value, tb, limit=None, file=None):
@@ -664,7 +659,7 @@ def print_exception(etype, value, tb, limit=None, file=None):
         file = sys.stderr
     if tb:
         tbi = TracebackInfo.from_traceback(tb, limit)
-        print(str(tbi), end='', file=file)
+        print(tbi, end='', file=file)
 
     for line in format_exception_only(etype, value):
         print(line, end='', file=file)
@@ -733,16 +728,15 @@ class ParsedException(object):
         lines = [u'Traceback (most recent call last):']
 
         for frame in self.frames:
-            lines.append(u'  File "%s", line %s, in %s' % (frame['filepath'],
-                                                           frame['lineno'],
-                                                           frame['funcname']))
-            source_line = frame.get('source_line')
-            if source_line:
-                lines.append(u'    %s' % (source_line,))
+            lines.append(
+                f"""  File "{frame['filepath']}", line {frame['lineno']}, in {frame['funcname']}"""
+            )
+            if source_line := frame.get('source_line'):
+                lines.append(f'    {source_line}')
         if self.exc_msg:
-            lines.append(u'%s: %s' % (self.exc_type, self.exc_msg))
+            lines.append(f'{self.exc_type}: {self.exc_msg}')
         else:
-            lines.append(u'%s' % (self.exc_type,))
+            lines.append(f'{self.exc_type}')
         return u'\n'.join(lines)
 
     @classmethod
@@ -789,29 +783,27 @@ class ParsedException(object):
         line_no = start_line
         while True:
             frame_line = tb_lines[line_no].strip()
-            frame_match = frame_re.match(frame_line)
-            if frame_match:
-                frame_dict = frame_match.groupdict()
-                try:
-                    next_line = tb_lines[line_no + 1]
-                except IndexError:
-                    # We read what we could
-                    next_line = ''
-                next_line_stripped = next_line.strip()
-                if (
-                        frame_re.match(next_line_stripped) or
-                        # The exception message will not be indented
-                        # This check is to avoid overrunning on eval-like
-                        # tracebacks where the last frame doesn't have source
-                        # code in the traceback
-                        not next_line.startswith(' ')
-                ):
-                    frame_dict['source_line'] = ''
-                else:
-                    frame_dict['source_line'] = next_line_stripped
-                    line_no += 1
-            else:
+            if not (frame_match := frame_re.match(frame_line)):
                 break
+            frame_dict = frame_match.groupdict()
+            try:
+                next_line = tb_lines[line_no + 1]
+            except IndexError:
+                # We read what we could
+                next_line = ''
+            next_line_stripped = next_line.strip()
+            if (
+                    frame_re.match(next_line_stripped) or
+                    # The exception message will not be indented
+                    # This check is to avoid overrunning on eval-like
+                    # tracebacks where the last frame doesn't have source
+                    # code in the traceback
+                    not next_line.startswith(' ')
+            ):
+                frame_dict['source_line'] = ''
+            else:
+                frame_dict['source_line'] = next_line_stripped
+                line_no += 1
             line_no += 1
             frames.append(frame_dict)
 

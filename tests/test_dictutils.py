@@ -50,12 +50,12 @@ def test_todict():
 def test_eq():
     omd = OMD(_ITEMSETS[3])
     assert omd == omd
-    assert not (omd != omd)
+    assert omd == omd
 
     omd2 = OMD(_ITEMSETS[3])
     assert omd == omd2
     assert omd2 == omd
-    assert not (omd != omd2)
+    assert omd == omd2
 
     d = dict(_ITEMSETS[3])
     assert d == omd
@@ -110,7 +110,7 @@ def test_multi_correctness():
     omd = OMD(_pairs)
     for multi in (True, False):
         vals = [x[1] for x in omd.iteritems(multi=multi)]
-        strictly_ascending = all([x < y for x, y in zip(vals, vals[1:])])
+        strictly_ascending = all(x < y for x, y in zip(vals, vals[1:]))
         assert strictly_ascending
     return
 
@@ -149,7 +149,7 @@ def test_update():
         ref2 = dict(second)
 
         omd1.update(omd2)
-        ref1.update(ref2)
+        ref1 |= ref2
         assert omd1.todict() == ref1
 
         omd1_repr = repr(omd1)
@@ -164,7 +164,7 @@ def test_update_extend():
         ref = dict(first)
         orig_keys = set(omd1)
 
-        ref.update(second)
+        ref |= second
         omd1.update_extend(omd2)
         for k in omd2:
             assert len(omd1.getlist(k)) >= len(omd2.getlist(k))
@@ -219,7 +219,7 @@ def test_addlist():
     e_omd = OMD()
     e_omd.addlist('a', [])
     assert e_omd.keys() == []
-    assert len(list(e_omd.iteritems(multi=True))) == 0
+    assert not list(e_omd.iteritems(multi=True))
 
 
 def test_pop_all():
@@ -266,7 +266,7 @@ def test_reversed():
     omd = OMD()
     assert list(reversed(omd)) == list(reversed(omd.keys()))
     for i in range(20):
-        for j in range(i):
+        for _ in range(i):
             omd.add(i, i)
     assert list(reversed(omd)) == list(reversed(omd.keys()))
 
@@ -378,7 +378,7 @@ def test_many_to_many():
     del m2m.inv['b']
     assert 1 not in m2m
     m2m[1] = ('a', 'b')
-    assert set(m2m.iteritems()) == set([(1, 'a'), (1, 'b')])
+    assert set(m2m.iteritems()) == {(1, 'a'), (1, 'b')}
     m2m.remove(1, 'a')
     m2m.remove(1, 'b')
     assert 1 not in m2m

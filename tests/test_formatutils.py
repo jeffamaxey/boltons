@@ -20,7 +20,7 @@ _PFATS = [PFAT('{} {} {}', ('hi', 'hello', 'bye'), "hi hello bye"),
 
 
 def test_pos_infer():
-    for i, (tmpl, args, res) in enumerate(_PFATS):
+    for tmpl, args, res in _PFATS:
         converted = infer_positional_format_args(tmpl)
         assert converted.format(*args) == res
 

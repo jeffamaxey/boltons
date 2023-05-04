@@ -123,9 +123,7 @@ class BarrelList(list):
             if rel_idx < len_list:
                 break
             rel_idx -= len_list
-        if rel_idx < 0:
-            return None, None
-        return list_idx, rel_idx
+        return (None, None) if rel_idx < 0 else (list_idx, rel_idx)
 
     def _balance_list(self, list_idx):
         if list_idx < 0:
@@ -236,13 +234,10 @@ class BarrelList(list):
         return chain.from_iterable(reversed(l) for l in reversed(self.lists))
 
     def __len__(self):
-        return sum([len(l) for l in self.lists])
+        return sum(len(l) for l in self.lists)
 
     def __contains__(self, item):
-        for cur in self.lists:
-            if item in cur:
-                return True
-        return False
+        return any(item in cur for cur in self.lists)
 
     def __getitem__(self, index):
         try:
@@ -251,8 +246,7 @@ class BarrelList(list):
             index = operator.index(index)
         else:
             iter_slice = self.iter_slice(start, stop, step)
-            ret = self.from_iterable(iter_slice)
-            return ret
+            return self.from_iterable(iter_slice)
         list_idx, rel_idx = self._translate_index(index)
         if list_idx is None:
             raise IndexError()
@@ -326,7 +320,7 @@ class BarrelList(list):
         self.lists.reverse()
 
     def count(self, item):
-        return sum([cur.count(item) for cur in self.lists])
+        return sum(cur.count(item) for cur in self.lists)
 
     def index(self, item):
         len_accum = 0

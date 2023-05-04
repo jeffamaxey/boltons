@@ -232,8 +232,7 @@ def lstrip_iter(iterable, strip_value=None):
         if i != strip_value:
             yield i
             break
-    for i in iterator:
-        yield i
+    yield from iterator
 
 
 def rstrip(iterable, strip_value=None):
@@ -260,8 +259,7 @@ def rstrip_iter(iterable, strip_value=None):
     iterator = iter(iterable)
     for i in iterator:
         if i == strip_value:
-            cache = list()
-            cache.append(i)
+            cache = [i]
             broken = False
             for i in iterator:
                 if i == strip_value:
@@ -271,8 +269,7 @@ def rstrip_iter(iterable, strip_value=None):
                     break
             if not broken: # Return to caller here because the end of the
                 return     # iterator has been reached
-            for t in cache:
-                yield t
+            yield from cache
         yield i
 
 
@@ -582,18 +579,13 @@ def backoff_iter(start, stop, count=None, factor=2.0, jitter=False):
 
     cur, i = start, 0
     while count == 'repeat' or i < count:
-        if not jitter:
-            cur_ret = cur
-        elif jitter:
-            cur_ret = cur - (cur * jitter * random.random())
-        yield cur_ret
+        yield cur - (cur * jitter * random.random()) if jitter else cur
         i += 1
         if cur == 0:
             cur = 1
         elif cur < stop:
             cur *= factor
-        if cur > stop:
-            cur = stop
+        cur = min(cur, stop)
     return
 
 
@@ -799,18 +791,17 @@ def redundant(src, key=None, groups=False):
         k = key_func(i) if key else i
         if k not in seen:
             seen[k] = i
+        elif k in redundant_groups:
+            if groups:
+                redundant_groups[k].append(i)
         else:
-            if k in redundant_groups:
-                if groups:
-                    redundant_groups[k].append(i)
-            else:
-                redundant_order.append(k)
-                redundant_groups[k] = [seen[k], i]
-    if not groups:
-        ret = [redundant_groups[k][1] for k in redundant_order]
-    else:
-        ret = [redundant_groups[k] for k in redundant_order]
-    return ret
+            redundant_order.append(k)
+            redundant_groups[k] = [seen[k], i]
+    return (
+        [redundant_groups[k] for k in redundant_order]
+        if groups
+        else [redundant_groups[k][1] for k in redundant_order]
+    )
 
 
 def one(src, default=None, key=None):
@@ -887,8 +878,7 @@ def flatten_iter(iterable):
     """
     for item in iterable:
         if isinstance(item, Iterable) and not isinstance(item, basestring):
-            for subitem in flatten_iter(item):
-                yield subitem
+            yield from flatten_iter(item)
         else:
             yield item
 
@@ -940,18 +930,17 @@ _orig_default_visit = default_visit
 
 def default_enter(path, key, value):
     # print('enter(%r, %r)' % (key, value))
-    if isinstance(value, basestring):
+    if (
+        isinstance(value, basestring)
+        or not isinstance(value, Mapping)
+        and not isinstance(value, Sequence)
+        and not isinstance(value, Set)
+    ):
         return value, False
     elif isinstance(value, Mapping):
         return value.__class__(), ItemsView(value)
-    elif isinstance(value, Sequence):
-        return value.__class__(), enumerate(value)
-    elif isinstance(value, Set):
-        return value.__class__(), enumerate(value)
     else:
-        # files, strings, other iterables, and scalars are not
-        # traversed
-        return value, False
+        return value.__class__(), enumerate(value)
 
 
 def default_exit(path, key, old_parent, new_parent, new_items):
@@ -1130,13 +1119,13 @@ def remap(root, visit=default_visit, enter=default_enter, exit=default_exit,
                 if reraise_visit:
                     raise
                 visited_item = True
-            if visited_item is False:
+            if not visited_item:
                 continue  # drop
-            elif visited_item is True:
+            else:
                 visited_item = (key, value)
-            # TODO: typecheck?
-            #    raise TypeError('expected (key, value) from visit(),'
-            #                    ' not: %r' % visited_item)
+                    # TODO: typecheck?
+                    #    raise TypeError('expected (key, value) from visit(),'
+                    #                    ' not: %r' % visited_item)
         try:
             new_items_stack[-1][1].append(visited_item)
         except IndexError:
@@ -1339,8 +1328,7 @@ class GUIDerator(object):
             if os.getpid() != self.pid:
                 self.reseed()
             target_bytes = (self.salt + str(next(self.count))).encode('utf8')
-            hash_text = self._sha1(target_bytes).hexdigest()[:self.size]
-            return hash_text
+            return self._sha1(target_bytes).hexdigest()[:self.size]
     else:
         def __next__(self):
             if os.getpid() != self.pid:

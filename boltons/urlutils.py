@@ -52,6 +52,7 @@ documents`_.
 
 """
 
+
 import re
 import socket
 import string
@@ -98,9 +99,21 @@ SCHEME_PORT_MAP = {'acap': 674, 'afp': 548, 'dict': 2628, 'dns': 53,
                    'wais': 210, 'ws': 80, 'wss': 443, 'xmpp': None}
 
 # This list of schemes that don't use authorities is also from the link above.
-NO_NETLOC_SCHEMES = set(['urn', 'about', 'bitcoin', 'blob', 'data', 'geo',
-                         'magnet', 'mailto', 'news', 'pkcs11',
-                         'sip', 'sips', 'tel'])
+NO_NETLOC_SCHEMES = {
+    'urn',
+    'about',
+    'bitcoin',
+    'blob',
+    'data',
+    'geo',
+    'magnet',
+    'mailto',
+    'news',
+    'pkcs11',
+    'sip',
+    'sips',
+    'tel',
+}
 # As of Mar 11, 2017, there were 44 netloc schemes, and 13 non-netloc
 
 # RFC 3986 section 2.2, Reserved Characters
@@ -195,7 +208,7 @@ def find_all_links(text, with_text=False, default_scheme='https', schemes=()):
             cur_url = URL(cur_url_text)
             if not cur_url.scheme:
                 if default_scheme:
-                    cur_url = URL(default_scheme + '://' + cur_url_text)
+                    cur_url = URL(f'{default_scheme}://{cur_url_text}')
                 else:
                     _add_text(text[start:end])
                     continue
@@ -420,7 +433,7 @@ class cachedproperty(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '<%s func=%s>' % (cn, self.func)
+        return f'<{cn} func={self.func}>'
 
 
 class URL(object):
@@ -517,8 +530,9 @@ class URL(object):
                 self.host = self.host.decode("idna")
 
         self.port = ud['port']
-        self.path_parts = tuple([unquote(p) if '%' in p else p for p
-                                 in (ud['path'] or _e).split(u'/')])
+        self.path_parts = tuple(
+            unquote(p) if '%' in p else p for p in (ud['path'] or _e).split(u'/')
+        )
         self._query = ud['query'] or _e
         self.fragment = (unquote(ud['fragment'])
                          if '%' in (ud['fragment'] or _e) else ud['fragment'] or _e)
@@ -584,8 +598,10 @@ class URL(object):
 
     @path.setter
     def path(self, path_text):
-        self.path_parts = tuple([unquote(p) if '%' in p else p
-                                 for p in to_unicode(path_text).split(u'/')])
+        self.path_parts = tuple(
+            unquote(p) if '%' in p else p
+            for p in to_unicode(path_text).split(u'/')
+        )
         return
 
     @property
@@ -614,14 +630,12 @@ class URL(object):
         mockscheme:hello:world
 
         """
-        default = self._netloc_sep
         if self.scheme in SCHEME_PORT_MAP:
             return True
         if self.scheme in NO_NETLOC_SCHEMES:
             return False
-        if self.scheme.split('+')[-1] in SCHEME_PORT_MAP:
-            return True
-        return default
+        default = self._netloc_sep
+        return True if self.scheme.split('+')[-1] in SCHEME_PORT_MAP else default
 
     @property
     def default_port(self):
@@ -809,10 +823,10 @@ class URL(object):
         return self.to_text()
 
     def __eq__(self, other):
-        for attr in self._cmp_attrs:
-            if not getattr(self, attr) == getattr(other, attr, None):
-                return False
-        return True
+        return all(
+            getattr(self, attr) == getattr(other, attr, None)
+            for attr in self._cmp_attrs
+        )
 
     def __ne__(self, other):
         return not self == other
@@ -870,7 +884,7 @@ def parse_host(host):
     """
     if not host:
         return None, u''
-    if u':' in host and u'[' == host[0] and u']' == host[-1]:
+    if u':' in host and host[0] == u'[' and host[-1] == u']':
         host = host[1:-1]
         try:
             inet_pton(socket.AF_INET6, host)
@@ -932,7 +946,7 @@ def parse_url(url_text):
         if sep:
             if host and host[0] == u'[' and u']' in port_str:
                 host_right, _, port_str = port_str.partition(u']')
-                host = host + u':' + host_right + u']'
+                host = f'{host}:{host_right}]'
                 if port_str and port_str[0] == u':':
                     port_str = port_str[1:]
 
@@ -1073,8 +1087,9 @@ class OrderedMultiDict(dict):
     """
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
-            raise TypeError('%s expected at most 1 argument, got %s'
-                            % (self.__class__.__name__, len(args)))
+            raise TypeError(
+                f'{self.__class__.__name__} expected at most 1 argument, got {len(args)}'
+            )
         super(OrderedMultiDict, self).__init__()
 
         self._clear_ll()
@@ -1144,9 +1159,7 @@ class OrderedMultiDict(dict):
         try:
             return super(OrderedMultiDict, self).__getitem__(k)[:]
         except KeyError:
-            if default is _MISSING:
-                return []
-            return default
+            return [] if default is _MISSING else default
 
     def clear(self):
         "Empty the dictionary."
@@ -1251,11 +1264,7 @@ class OrderedMultiDict(dict):
             for (selfk, selfv), (otherk, otherv) in zipped_items:
                 if selfk != otherk or selfv != otherv:
                     return False
-            if not(next(selfi, _MISSING) is _MISSING
-                   and next(otheri, _MISSING) is _MISSING):
-                # leftovers  (TODO: watch for StopIteration?)
-                return False
-            return True
+            return next(selfi, _MISSING) is _MISSING and next(otheri, _MISSING) is _MISSING
         elif hasattr(other, 'keys'):
             for selfk in self:
                 try:
@@ -1288,9 +1297,7 @@ class OrderedMultiDict(dict):
         super_self = super(OrderedMultiDict, self)
         if super_self.__contains__(k):
             self._remove_all(k)
-        if default is _MISSING:
-            return super_self.pop(k)
-        return super_self.pop(k, default)
+        return super_self.pop(k) if default is _MISSING else super_self.pop(k, default)
 
     def poplast(self, k=_MISSING, default=_MISSING):
         """Remove and return the most-recently inserted value under the key
@@ -1521,7 +1528,7 @@ class OrderedMultiDict(dict):
     def __repr__(self):
         cn = self.__class__.__name__
         kvs = ', '.join([repr((k, v)) for k, v in self.iteritems(multi=True)])
-        return '%s([%s])' % (cn, kvs)
+        return f'{cn}([{kvs}])'
 
     def viewkeys(self):
         "OMD.viewkeys() -> a set-like object providing a view on OMD's keys"
